@@ -215,6 +215,24 @@ export default function App() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    // Save to localStorage for admin portal
+    const STORAGE_KEY = 'portfolio_messages'
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      const existing = raw ? JSON.parse(raw) : []
+      const newMessage = {
+        id: crypto.randomUUID(),
+        name: formData.name,
+        email: formData.email,
+        message: formData.message,
+        timestamp: new Date().toISOString(),
+        read: false,
+      }
+      existing.push(newMessage)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
+    } catch {
+      // Silently fail — message still shows success UI
+    }
     setSubmitted(true)
   }
 
@@ -828,9 +846,10 @@ export default function App() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { label: 'Email', value: 'henriette@mushimiyimana.dev' },
-                  { label: 'GitHub', value: 'github.com/henriette-dev' },
-                  { label: 'LinkedIn', value: 'linkedin.com/in/hmushimiyimana' },
+                  { label: 'Email', value: 'henriettemayor@gmail.com' },
+                  { label: 'GitHub', value: 'github.com/Mushi001' },
+                  { label: 'LinkedIn', value: 'linkedin.com/in/mushimiyimana-henriette' },
+                  { label: 'Instagram', value: 'instagram.com/h.e.n.r_i.e.t.t.e' },
                 ].map((link, i) => (
                   <ContactLink key={link.label} label={link.label} value={link.value} delay={i * 0.1} visible={contactReveal.visible} />
                 ))}
