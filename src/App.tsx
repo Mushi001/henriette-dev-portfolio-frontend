@@ -14,18 +14,31 @@ const SKILLS = [
   { name: 'Tailwind CSS', cat: 'Frontend' },
   { name: 'TypeScript', cat: 'Language' },
   { name: 'JavaScript', cat: 'Language' },
+  { name: 'Java', cat: 'Language' },
   { name: 'Python', cat: 'Language' },
+  { name: 'PHP', cat: 'Language' },
+  { name: 'C', cat: 'Language' },
+  { name: 'C++', cat: 'Language' },
   { name: 'Node.js', cat: 'Backend' },
   { name: 'Express', cat: 'Backend' },
   { name: 'FastAPI', cat: 'Backend' },
+  { name: 'Spring Boot', cat: 'Backend' },
   { name: 'PostgreSQL', cat: 'Database' },
+  { name: 'MySQL', cat: 'Database' },
   { name: 'MongoDB', cat: 'Database' },
+  { name: 'H2DB', cat: 'Database' },
   { name: 'Redis', cat: 'Database' },
   { name: 'Docker', cat: 'DevOps' },
+  { name: 'Kubernetes', cat: 'DevOps' },
   { name: 'AWS', cat: 'DevOps' },
   { name: 'Git', cat: 'DevOps' },
+  { name: 'GitHub', cat: 'DevOps' },
+  { name: 'GitHub Actions', cat: 'DevOps' },
+  { name: 'GitLab', cat: 'DevOps' },
+  { name: 'CI/CD', cat: 'DevOps' },
   { name: 'GraphQL', cat: 'API' },
   { name: 'REST APIs', cat: 'API' },
+  { name: 'Machine Learning', cat: 'ML' },
 ]
 
 const PROJECTS = [
@@ -93,15 +106,30 @@ const EXPERIENCE = [
   },
 ]
 
-const PRIMARY_ACCENT = '#3B82F6'
-const BG = '#0D1117'
-const SURFACE = '#161B22'
-const SURFACE2 = '#0D1117'
-const TEXT = '#FFFFFF'
-const TEXT_DIM = '#9CA3AF'
-const TEXT_FAINT = 'rgba(156, 163, 175, 0.5)'
-const BORDER = 'rgba(255,255,255,0.1)'
-const BORDER_BRIGHT = 'rgba(59,130,246,0.3)'
+const PRIMARY_ACCENT = 'var(--accent)'
+const BG = 'var(--bg)'
+const SURFACE = 'var(--surface)'
+const SURFACE2 = 'var(--surface2)'
+const TEXT = 'var(--text)'
+const TEXT_DIM = 'var(--text-dim)'
+const TEXT_FAINT = 'var(--text-faint)'
+const BORDER = 'var(--border)'
+const BORDER_BRIGHT = 'var(--border-bright)'
+
+// Additional theme-aware constants
+const ACCENT_HOVER = 'var(--accent-hover)'
+const ACCENT_DIM = 'var(--accent-dim)'
+const NAV_BG = 'var(--nav-bg)'
+const BTN_OUTLINE_BORDER = 'var(--btn-outline-border)'
+const OVERLAY_BG = 'var(--overlay-bg)'
+const IMG_PLACEHOLDER = 'var(--img-placeholder)'
+const LABEL_COLOR = 'var(--label-color)'
+const BG_FAINT = 'var(--bg-faint)'
+const BG_FAINTER = 'var(--bg-fainter)'
+const BORDER_FAINT = 'var(--border-faint)'
+const LIST_BORDER = 'var(--list-border)'
+const ACCENT_SUBTLE_BG = 'var(--accent-subtle-bg)'
+const INPUT_FOCUS_BORDER = 'var(--input-focus-border)'
 
 const ff = {
   display: "'DM Sans', sans-serif",
@@ -166,6 +194,13 @@ export default function App() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
   const [submitted, setSubmitted] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('portfolio_theme')
+    return saved ? saved === 'dark' : true
+  })
+  const cursorRef = useRef<HTMLDivElement>(null)
+  const cursorPos = useRef({ x: 0, y: 0 })
+  const cursorTarget = useRef({ x: 0, y: 0 })
 
   // Scroll reveal refs
   const statsReveal = useScrollReveal(0.3)
@@ -208,6 +243,36 @@ export default function App() {
     return () => window.removeEventListener('keydown', closeMenu)
   }, [])
 
+  // Cursor follower
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      cursorTarget.current = { x: e.clientX, y: e.clientY }
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+
+    let rafId: number
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+    const animate = () => {
+      cursorPos.current.x = lerp(cursorPos.current.x, cursorTarget.current.x, 0.12)
+      cursorPos.current.y = lerp(cursorPos.current.y, cursorTarget.current.y, 0.12)
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate(${cursorPos.current.x - 16}px, ${cursorPos.current.y - 16}px)`
+      }
+      rafId = requestAnimationFrame(animate)
+    }
+    rafId = requestAnimationFrame(animate)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      cancelAnimationFrame(rafId)
+    }
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('portfolio_theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
+
   const scrollTo = (id: string) => {
     document.getElementById(id.toLowerCase())?.scrollIntoView({ behavior: 'smooth' })
     setMenuOpen(false)
@@ -237,7 +302,27 @@ export default function App() {
   }
 
   return (
-    <div style={{ backgroundColor: BG, color: TEXT, fontFamily: ff.body, minHeight: '100vh' }}>
+    <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: BG, color: TEXT, fontFamily: ff.body, minHeight: '100vh', transition: 'background-color 0.4s ease, color 0.4s ease' }}>
+      {/* Cursor follower */}
+      <div
+        ref={cursorRef}
+        className="cursor-follower"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          border: `2px solid ${PRIMARY_ACCENT}`,
+          backgroundColor: 'rgba(59, 130, 246, 0.08)',
+          pointerEvents: 'none',
+          zIndex: 9999,
+          willChange: 'transform',
+          boxShadow: '0 0 12px rgba(59, 130, 246, 0.25), 0 0 4px rgba(59, 130, 246, 0.15)',
+          transition: 'width 0.3s, height 0.3s, opacity 0.3s',
+        }}
+      />
       <div className="scroll-progress" style={{ transform: `scaleX(${scrollProgress / 100})` }} aria-hidden="true" />
       {/* ── Nav ── */}
       <nav
@@ -249,7 +334,7 @@ export default function App() {
           right: 0,
           zIndex: 50,
           transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          backgroundColor: scrolled ? 'rgba(12,12,20,0.88)' : 'transparent',
+          backgroundColor: scrolled ? NAV_BG : 'transparent',
           backdropFilter: scrolled ? 'blur(20px)' : 'none',
           borderBottom: scrolled ? `1px solid ${BORDER}` : 'none',
         }}
@@ -299,6 +384,26 @@ export default function App() {
               </button>
             ))}
             <button
+              onClick={() => setDarkMode(!darkMode)}
+              aria-label="Toggle theme"
+              style={{
+                background: 'none',
+                border: `1px solid ${BORDER}`,
+                borderRadius: 6,
+                cursor: 'pointer',
+                padding: '6px 10px',
+                fontSize: '1rem',
+                lineHeight: 1,
+                transition: 'border-color 0.3s, transform 0.2s',
+                color: TEXT,
+                animation: `fadeInDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both`,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = PRIMARY_ACCENT; e.currentTarget.style.transform = 'scale(1.1)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.transform = 'scale(1)' }}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+            <button
               onClick={() => scrollTo('Contact')}
               className="btn-primary"
               style={{
@@ -314,7 +419,7 @@ export default function App() {
                 letterSpacing: '0.05em',
                 animation: `fadeInDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both`,
               }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.backgroundColor = '#2563eb')}
+              onMouseEnter={(e) => ((e.target as HTMLElement).style.backgroundColor = ACCENT_HOVER)}
               onMouseLeave={(e) => ((e.target as HTMLElement).style.backgroundColor = PRIMARY_ACCENT)}
             >
               Hire me
@@ -372,6 +477,25 @@ export default function App() {
                 {link}
               </button>
             ))}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                borderTop: `1px solid ${BORDER}`,
+                cursor: 'pointer',
+                padding: '12px 0',
+                fontFamily: ff.mono,
+                fontSize: '0.85rem',
+                color: PRIMARY_ACCENT,
+                marginTop: 4,
+              }}
+            >
+              {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+            </button>
           </div>
         )}
       </nav>
@@ -394,8 +518,7 @@ export default function App() {
           style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage:
-              'linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px)',
+            backgroundImage: `linear-gradient(var(--hero-grid) 1px, transparent 1px), linear-gradient(90deg, var(--hero-grid) 1px, transparent 1px)`,
             backgroundSize: '60px 60px',
             pointerEvents: 'none',
           }}
@@ -410,7 +533,7 @@ export default function App() {
             width: 500,
             height: 500,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, var(--hero-glow) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -427,7 +550,7 @@ export default function App() {
             fontSize: 'clamp(4rem, 14vw, 13rem)',
             letterSpacing: '-0.04em',
             color: 'transparent',
-            WebkitTextStroke: '1px rgba(59,130,246,0.08)',
+            WebkitTextStroke: `1px var(--hero-stroke)`,
             whiteSpace: 'nowrap',
             userSelect: 'none',
             pointerEvents: 'none',
@@ -463,7 +586,7 @@ export default function App() {
             }}
           >
             <span className="hero-name-first" style={{ fontSize: 'clamp(3.5rem, 9vw, 7.5rem)', color: TEXT, display: 'block' }}>Henriette</span>
-            <span className="hero-name-last" style={{ fontSize: 'clamp(2rem, 5.5vw, 4.8rem)', color: 'rgba(59,130,246,0.7)', display: 'block' }}>Mushimiyimana</span>
+            <span className="hero-name-last" style={{ fontSize: 'clamp(2rem, 5.5vw, 4.8rem)', color: ACCENT_DIM, display: 'block' }}>Mushimiyimana</span>
           </h1>
           <p
             className="hero-description"
@@ -475,8 +598,7 @@ export default function App() {
               marginBottom: '2.5rem',
             }}
           >
-            I build fast, reliable full-stack applications — from polished React UIs to well-structured APIs and cloud deployments. Currently at{' '}
-            <span style={{ color: TEXT }}>Buildware Technologies</span>.
+            I build fast, reliable full-stack applications — from responsive user interfaces to scalable backend systems, APIs, databases, and cloud-based solutions.
           </p>
           <div className="hero-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
             <button
@@ -494,7 +616,7 @@ export default function App() {
                 cursor: 'pointer',
                 letterSpacing: '0.05em',
               }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.backgroundColor = '#2563eb')}
+              onMouseEnter={(e) => ((e.target as HTMLElement).style.backgroundColor = ACCENT_HOVER)}
               onMouseLeave={(e) => ((e.target as HTMLElement).style.backgroundColor = PRIMARY_ACCENT)}
             >
               View Projects →
@@ -510,7 +632,7 @@ export default function App() {
                 fontFamily: ff.mono,
                 fontSize: '0.82rem',
                 fontWeight: 500,
-                border: '1px solid rgba(240,240,248,0.18)',
+                border: `1px solid ${BTN_OUTLINE_BORDER}`,
                 cursor: 'pointer',
                 letterSpacing: '0.05em',
               }}
@@ -519,7 +641,7 @@ export default function App() {
                 ;(e.target as HTMLElement).style.color = PRIMARY_ACCENT
               }}
               onMouseLeave={(e) => {
-                ;(e.target as HTMLElement).style.borderColor = 'rgba(240,240,248,0.18)'
+                ;(e.target as HTMLElement).style.borderColor = BTN_OUTLINE_BORDER
                 ;(e.target as HTMLElement).style.color = TEXT
               }}
             >
@@ -596,13 +718,13 @@ export default function App() {
                 <span style={{ color: PRIMARY_ACCENT }}>actually work.</span>
               </h2>
               <p style={{ color: TEXT_DIM, lineHeight: 1.8, marginBottom: '1rem', fontSize: '0.95rem' }}>
-                I'm Henriette, a full-stack developer based in San Francisco. I got into programming during university and
-                haven't stopped since. In two years of professional work I've gone from shipping my first React
-                components to designing and owning entire service architectures.
+                I'm a full-stack developer and student passionate about building software that solves real-world problems. My journey into programming began in high school, where curiosity gradually turned into a deep interest in software development.
+              </p>
+              <p style={{ color: TEXT_DIM, lineHeight: 1.8, marginBottom: '1rem', fontSize: '0.95rem' }}>
+                Over the years, I've worked on projects ranging from modern web applications to microservices and backend systems. I enjoy designing APIs, working with databases, integrating services, and learning new technologies.
               </p>
               <p style={{ color: TEXT_DIM, lineHeight: 1.8, marginBottom: '2rem', fontSize: '0.95rem' }}>
-                I care deeply about code that's readable, systems that scale cleanly, and products that feel polished to
-                use. When I'm not writing code, I'm usually contributing to open source or hiking the Marin Headlands.
+                I care deeply about writing clean, maintainable code, building systems that scale, and continuously improving my skills as a developer. Every project I build is another opportunity to learn, experiment, and grow.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {[
@@ -671,12 +793,11 @@ export default function App() {
                 Tools I reach<br />for every day.
               </h2>
               <p style={{ color: TEXT_DIM, lineHeight: 1.75, fontSize: '0.95rem', maxWidth: 380 }}>
-                Two years of deliberate practice across the full stack — from pixel-pushing in React to debugging slow
-                Postgres queries at midnight.
+                A growing skill set built through continuous practice across frontend and backend development, with a strong focus on clean code, scalable systems, and modern web technologies.
               </p>
             </div>
             <div className={`reveal-right ${skillsReveal.visible ? 'visible' : ''}`}>
-              {['Frontend', 'Language', 'Backend', 'Database', 'DevOps', 'API'].map((cat, catIndex) => {
+              {['Frontend', 'Language', 'Backend', 'Database', 'DevOps', 'API', 'ML'].map((cat, catIndex) => {
                 const catSkills = SKILLS.filter((s) => s.cat === cat)
                 if (!catSkills.length) return null
                 return (
@@ -868,7 +989,7 @@ export default function App() {
                     textAlign: 'center',
                     padding: '3rem',
                     borderRadius: 8,
-                    border: `1px solid rgba(59,130,246,0.2)`,
+                    border: `1px solid ${BORDER_BRIGHT}`,
                     backgroundColor: SURFACE,
                     animation: 'scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
                   }}
@@ -878,7 +999,7 @@ export default function App() {
                       width: 56,
                       height: 56,
                       borderRadius: '50%',
-                      backgroundColor: 'rgba(59,130,246,0.1)',
+                      backgroundColor: ACCENT_SUBTLE_BG,
                       border: `1px solid ${PRIMARY_ACCENT}`,
                       display: 'flex',
                       alignItems: 'center',
@@ -922,7 +1043,7 @@ export default function App() {
                           width: '100%',
                           padding: '12px 16px',
                           borderRadius: 4,
-                          border: `1px solid rgba(255,255,255,0.1)`,
+                          border: `1px solid ${BORDER}`,
                           backgroundColor: SURFACE,
                           color: TEXT,
                           fontSize: '0.9rem',
@@ -931,8 +1052,8 @@ export default function App() {
                           boxSizing: 'border-box',
                           fontFamily: ff.body,
                         }}
-                        onFocus={(e) => (e.target.style.borderColor = 'rgba(59,130,246,0.5)')}
-                        onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                        onFocus={(e) => (e.target.style.borderColor = INPUT_FOCUS_BORDER)}
+                        onBlur={(e) => (e.target.style.borderColor = BORDER)}
                       />
                     </div>
                   ))}
@@ -948,7 +1069,7 @@ export default function App() {
                         width: '100%',
                         padding: '12px 16px',
                         borderRadius: 4,
-                        border: `1px solid rgba(255,255,255,0.1)`,
+                        border: `1px solid ${BORDER}`,
                         backgroundColor: SURFACE,
                         color: TEXT,
                         fontSize: '0.9rem',
@@ -958,8 +1079,8 @@ export default function App() {
                         fontFamily: ff.body,
                         boxSizing: 'border-box',
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = 'rgba(59,130,246,0.5)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                      onFocus={(e) => (e.target.style.borderColor = INPUT_FOCUS_BORDER)}
+                      onBlur={(e) => (e.target.style.borderColor = BORDER)}
                     />
                   </div>
                   <button
@@ -978,7 +1099,7 @@ export default function App() {
                       letterSpacing: '0.05em',
                       alignSelf: 'flex-start',
                     }}
-                    onMouseEnter={(e) => ((e.target as HTMLElement).style.backgroundColor = '#2563eb')}
+                    onMouseEnter={(e) => ((e.target as HTMLElement).style.backgroundColor = ACCENT_HOVER)}
                     onMouseLeave={(e) => ((e.target as HTMLElement).style.backgroundColor = PRIMARY_ACCENT)}
                   >
                     Send message →
@@ -1082,7 +1203,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
         display: 'block',
         fontFamily: ff.mono,
         fontSize: '0.65rem',
-        color: 'rgba(240,240,248,0.4)',
+        color: LABEL_COLOR,
         letterSpacing: '0.12em',
         marginBottom: 7,
       }}
@@ -1102,7 +1223,7 @@ function SkillTag({ name, delay = 0, visible = true }: { name: string; delay?: n
       style={{
         padding: '5px 12px',
         borderRadius: 3,
-        backgroundColor: hov ? 'rgba(59,130,246,0.07)' : SURFACE,
+        backgroundColor: hov ? ACCENT_SUBTLE_BG : SURFACE,
         border: `1px solid ${hov ? BORDER_BRIGHT : BORDER}`,
         fontFamily: ff.mono,
         fontSize: '0.78rem',
@@ -1139,7 +1260,7 @@ function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof 
         animation: visible ? `slideInStagger 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s both` : 'none',
       }}
     >
-      <div style={{ aspectRatio: '16/9', overflow: 'hidden', backgroundColor: '#1a1a2e', position: 'relative' }}>
+      <div style={{ aspectRatio: '16/9', overflow: 'hidden', backgroundColor: IMG_PLACEHOLDER, position: 'relative' }}>
         <img
           className="project-image"
           src={`https://images.unsplash.com/photo-${project.imgId}?w=600&h=340&fit=crop&auto=format`}
@@ -1156,7 +1277,7 @@ function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof 
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(180deg, transparent 40%, rgba(19,19,31,0.7) 100%)',
+            background: `linear-gradient(180deg, transparent 40%, var(--card-overlay-end) 100%)`,
           }}
         />
         <div
@@ -1168,7 +1289,7 @@ function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof 
             fontSize: '0.62rem',
             color: PRIMARY_ACCENT,
             letterSpacing: '0.1em',
-            backgroundColor: 'rgba(12,12,20,0.75)',
+            backgroundColor: OVERLAY_BG,
             padding: '3px 8px',
             borderRadius: 2,
           }}
@@ -1183,7 +1304,7 @@ function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof 
             fontFamily: ff.mono,
             fontSize: '0.62rem',
             color: TEXT_FAINT,
-            backgroundColor: 'rgba(12,12,20,0.75)',
+            backgroundColor: OVERLAY_BG,
             padding: '3px 8px',
             borderRadius: 2,
           }}
@@ -1215,7 +1336,7 @@ function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof 
                 fontFamily: ff.mono,
                 fontSize: '0.65rem',
                 color: TEXT_FAINT,
-                backgroundColor: 'rgba(255,255,255,0.04)',
+                backgroundColor: BG_FAINT,
                 border: `1px solid ${BORDER}`,
                 padding: '2px 8px',
                 borderRadius: 2,
@@ -1261,7 +1382,7 @@ function ExperienceCard({ exp, defaultOpen, delay = 0, visible = true }: { exp: 
       className="exp-card"
       style={{
         borderRadius: 8,
-        border: `1px solid ${open ? 'rgba(59,130,246,0.2)' : BORDER}`,
+        border: `1px solid ${open ? BORDER_BRIGHT : BORDER}`,
         backgroundColor: SURFACE,
         overflow: 'hidden',
         transition: 'border-color 0.3s, box-shadow 0.3s',
@@ -1339,7 +1460,7 @@ function ExperienceCard({ exp, defaultOpen, delay = 0, visible = true }: { exp: 
                   fontSize: '0.88rem',
                   color: TEXT_DIM,
                   lineHeight: 1.65,
-                  borderBottom: i < exp.points.length - 1 ? `1px solid rgba(255,255,255,0.04)` : 'none',
+                  borderBottom: i < exp.points.length - 1 ? `1px solid ${LIST_BORDER}` : 'none',
                   opacity: open ? 1 : 0,
                   transform: open ? 'translateX(0)' : 'translateX(-10px)',
                   transition: `opacity 0.4s ease ${i * 0.08}s, transform 0.4s ease ${i * 0.08}s`,
@@ -1358,7 +1479,7 @@ function ExperienceCard({ exp, defaultOpen, delay = 0, visible = true }: { exp: 
                   fontFamily: ff.mono,
                   fontSize: '0.68rem',
                   color: TEXT_FAINT,
-                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  backgroundColor: BG_FAINTER,
                   border: `1px solid ${BORDER}`,
                   padding: '3px 10px',
                   borderRadius: 3,
@@ -1396,7 +1517,7 @@ function ContactLink({ label, value, delay = 0, visible = true }: { label: strin
         gap: 14,
         padding: '14px 18px',
         borderRadius: 6,
-        border: `1px solid ${hov ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.06)'}`,
+        border: `1px solid ${hov ? 'var(--contact-hover-border)' : BORDER_FAINT}`,
         backgroundColor: SURFACE,
         cursor: 'pointer',
         opacity: visible ? 1 : 0,
