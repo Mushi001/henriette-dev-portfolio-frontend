@@ -1,110 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  ApiError,
+  getExperience,
+  getProcessSteps,
+  getProfile,
+  getProjects,
+  getSkills,
+  submitContact,
+  type Experience,
+  type ProcessStep,
+  type Profile,
+  type Project,
+  type Skill,
+} from './lib/api'
 
-const NAV_LINKS = ['About', 'Skills', 'Process', 'Projects', 'Experience', 'Contact']
-
-const PROCESS = [
-  { number: '01', title: 'Understand the problem', text: 'I start with the user, the business goal, and the constraints—so the solution solves the right problem.' },
-  { number: '02', title: 'Build in small loops', text: 'I turn ideas into testable slices, share progress early, and use feedback before complexity has time to grow.' },
-  { number: '03', title: 'Ship with confidence', text: 'I finish with accessibility, performance, testing, and clear documentation—not just a working happy path.' },
-]
-
-const SKILLS = [
-  { name: 'React', cat: 'Frontend' },
-  { name: 'Next.js', cat: 'Frontend' },
-  { name: 'Tailwind CSS', cat: 'Frontend' },
-  { name: 'TypeScript', cat: 'Language' },
-  { name: 'JavaScript', cat: 'Language' },
-  { name: 'Java', cat: 'Language' },
-  { name: 'Python', cat: 'Language' },
-  { name: 'PHP', cat: 'Language' },
-  { name: 'C', cat: 'Language' },
-  { name: 'C++', cat: 'Language' },
-  { name: 'Node.js', cat: 'Backend' },
-  { name: 'Express', cat: 'Backend' },
-  { name: 'FastAPI', cat: 'Backend' },
-  { name: 'Spring Boot', cat: 'Backend' },
-  { name: 'PostgreSQL', cat: 'Database' },
-  { name: 'MySQL', cat: 'Database' },
-  { name: 'MongoDB', cat: 'Database' },
-  { name: 'H2DB', cat: 'Database' },
-  { name: 'Redis', cat: 'Database' },
-  { name: 'Docker', cat: 'DevOps' },
-  { name: 'Kubernetes', cat: 'DevOps' },
-  { name: 'AWS', cat: 'DevOps' },
-  { name: 'Git', cat: 'DevOps' },
-  { name: 'GitHub', cat: 'DevOps' },
-  { name: 'GitHub Actions', cat: 'DevOps' },
-  { name: 'GitLab', cat: 'DevOps' },
-  { name: 'CI/CD', cat: 'DevOps' },
-  { name: 'GraphQL', cat: 'API' },
-  { name: 'REST APIs', cat: 'API' },
-  { name: 'Machine Learning', cat: 'ML' },
-]
-
-const PROJECTS = [
-  {
-    title: 'Taskflow',
-    tagline: 'Real-time collaborative PM tool',
-    description:
-      'Kanban boards with drag-and-drop, WebSocket live updates, and team-based access control. Serving 1,200+ active users across 80+ organizations.',
-    tech: ['React', 'Node.js', 'Socket.io', 'PostgreSQL', 'Redis'],
-    type: 'Full Stack',
-    year: '2024',
-    imgId: '1611224923853-80b023f02d71',
-    metrics: ['1.2k users', '99.2% uptime', '< 80ms p95'],
-  },
-  {
-    title: 'MealKit API',
-    tagline: 'Meal-kit delivery backend',
-    description:
-      'RESTful API powering inventory tracking, subscriptions, order management, and a collaborative filtering recommendation engine serving 50k daily requests.',
-    tech: ['Python', 'FastAPI', 'PostgreSQL', 'Docker', 'Redis'],
-    type: 'Backend',
-    year: '2024',
-    imgId: '1498837167922-ddd27525d352',
-    metrics: ['50k req/day', '28ms avg resp', 'Docker-deployed'],
-  },
-  {
-    title: 'DevMetrics',
-    tagline: 'Developer productivity dashboard',
-    description:
-      'Aggregates GitHub activity, PR reviews, and WakaTime coding sessions into a personal analytics hub with streak tracking and weekly reports.',
-    tech: ['Next.js', 'TypeScript', 'MongoDB', 'GitHub API'],
-    type: 'Full Stack',
-    year: '2023',
-    imgId: '1551288049-bebda4e38f71',
-    metrics: ['Open source', '340 ★ GitHub', '12 integrations'],
-  },
-]
-
-const EXPERIENCE = [
-  {
-    role: 'Junior Full Stack Developer',
-    company: 'Buildware Technologies',
-    period: 'Jan 2024 – Present',
-    location: 'Remote · San Francisco, CA',
-    points: [
-      'Built and maintained 6 microservices for a B2B SaaS platform with 4,000+ clients',
-      'Reduced average API response time by 34% through query optimization and Redis caching',
-      'Shipped an automated report-generation feature that saves clients 3+ hours per week',
-      'Mentored 2 engineering interns on React best practices and code review workflows',
-    ],
-    tech: ['React', 'Node.js', 'PostgreSQL', 'Docker', 'AWS'],
-  },
-  {
-    role: 'Software Engineering Intern',
-    company: 'Novalign Studio',
-    period: 'Jun 2023 – Dec 2023',
-    location: 'Hybrid · New York, NY',
-    points: [
-      'Developed 15+ reusable UI components for a fintech analytics dashboard',
-      'Integrated Stripe payment API to handle subscription billing for 800+ daily active users',
-      'Improved Lighthouse performance score from 61 to 89 for the client-facing application',
-      'Wrote end-to-end tests with Playwright achieving 87% coverage across critical flows',
-    ],
-    tech: ['Next.js', 'TypeScript', 'Stripe', 'MongoDB', 'Playwright'],
-  },
-]
+const NAV_LINKS = ['About', 'Skills', 'Process', 'Projects', 'Experience', 'Testimonials', 'Contact']
 
 const PRIMARY_ACCENT = 'var(--accent)'
 const BG = 'var(--bg)'
@@ -130,6 +40,7 @@ const BORDER_FAINT = 'var(--border-faint)'
 const LIST_BORDER = 'var(--list-border)'
 const ACCENT_SUBTLE_BG = 'var(--accent-subtle-bg)'
 const INPUT_FOCUS_BORDER = 'var(--input-focus-border)'
+const ERROR_COLOR = '#EF4444'
 
 const ff = {
   display: "'DM Sans', sans-serif",
@@ -137,27 +48,59 @@ const ff = {
   mono: "'DM Sans', sans-serif",
 }
 
+const ICON_PROPS = {
+  width: 20,
+  height: 20,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+}
+
+const PROCESS_ICONS = [
+  // Understand the problem — search
+  <svg {...ICON_PROPS}>
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>,
+  // Build in small loops — refresh cycle
+  <svg {...ICON_PROPS}>
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>,
+  // Ship with confidence — rocket
+  <svg {...ICON_PROPS}>
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+  </svg>,
+]
+
 // ── Custom Hooks ──
 
 function useScrollReveal(threshold = 0.15) {
-  const ref = useRef<HTMLDivElement>(null)
+  const [node, setNode] = useState<HTMLDivElement | null>(null)
   const [visible, setVisible] = useState(false)
+  const ref = useCallback((el: HTMLDivElement | null) => setNode(el), [])
 
   useEffect(() => {
-    const el = ref.current
-    if (!el) return
+    if (!node) return
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setVisible(true)
-          obs.unobserve(el)
+          obs.unobserve(node)
         }
       },
       { threshold }
     )
-    obs.observe(el)
+    obs.observe(node)
     return () => obs.disconnect()
-  }, [threshold])
+  }, [node, threshold])
 
   return { ref, visible }
 }
@@ -187,12 +130,25 @@ function useCountUp(end: number, duration = 2000, trigger = false) {
   return count
 }
 
+// ── Portfolio data (fetched from the backend) ──
+
+interface PortfolioData {
+  profile: Profile
+  skills: Skill[]
+  projects: Project[]
+  experience: Experience[]
+  process: ProcessStep[]
+}
+
 export default function App() {
   const [activeSection, setActiveSection] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [scrollProgress, setScrollProgress] = useState(0)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('portfolio_theme')
@@ -202,6 +158,30 @@ export default function App() {
   const cursorPos = useRef({ x: 0, y: 0 })
   const cursorTarget = useRef({ x: 0, y: 0 })
 
+  // ── Data loading ──
+  const [data, setData] = useState<PortfolioData | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  const loadData = useCallback(async () => {
+    setLoadError(null)
+    try {
+      const [profile, skills, projects, experience, process] = await Promise.all([
+        getProfile(),
+        getSkills(),
+        getProjects(),
+        getExperience(),
+        getProcessSteps(),
+      ])
+      setData({ profile, skills, projects, experience, process })
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Could not reach the server. Please try again.')
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
   // Scroll reveal refs
   const statsReveal = useScrollReveal(0.3)
   const aboutReveal = useScrollReveal()
@@ -209,13 +189,15 @@ export default function App() {
   const processReveal = useScrollReveal()
   const projectsReveal = useScrollReveal()
   const experienceReveal = useScrollReveal()
+  const testimonialsReveal = useScrollReveal()
   const contactReveal = useScrollReveal()
 
   // Counting stats
-  const yearsCount = useCountUp(2, 1800, statsReveal.visible)
-  const projectsCount = useCountUp(18, 2000, statsReveal.visible)
-  const techCount = useCountUp(17, 2200, statsReveal.visible)
-  const reposCount = useCountUp(34, 2400, statsReveal.visible)
+  const stats = data?.profile.stats
+  const yearsCount = useCountUp(stats?.years_experience ?? 0, 1800, statsReveal.visible && !!stats)
+  const projectsCount = useCountUp(stats?.projects_shipped ?? 0, 2000, statsReveal.visible && !!stats)
+  const techCount = useCountUp(stats?.technologies ?? 0, 2200, statsReveal.visible && !!stats)
+  const reposCount = useCountUp(stats?.github_repos ?? 0, 2400, statsReveal.visible && !!stats)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -278,28 +260,102 @@ export default function App() {
     setMenuOpen(false)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Save to localStorage for admin portal
-    const STORAGE_KEY = 'portfolio_messages'
+    setFormError(null)
+    setFieldErrors({})
+    setSubmitting(true)
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      const existing = raw ? JSON.parse(raw) : []
-      const newMessage = {
-        id: crypto.randomUUID(),
-        name: formData.name,
-        email: formData.email,
-        message: formData.message,
-        timestamp: new Date().toISOString(),
-        read: false,
+      await submitContact(formData)
+      setSubmitted(true)
+    } catch (err) {
+      if (err instanceof ApiError && err.fieldErrors) {
+        const fe: Record<string, string> = {}
+        err.fieldErrors.forEach((f) => {
+          fe[f.field] = f.message
+        })
+        setFieldErrors(fe)
+      } else if (err instanceof ApiError) {
+        setFormError(err.message)
+      } else {
+        setFormError('Something went wrong. Please try again later.')
       }
-      existing.push(newMessage)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
-    } catch {
-      // Silently fail — message still shows success UI
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitted(true)
   }
+
+  // ── Loading / error states ──
+  if (loadError) {
+    return (
+      <div
+        data-theme={darkMode ? 'dark' : 'light'}
+        style={{
+          backgroundColor: BG,
+          color: TEXT,
+          fontFamily: ff.body,
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+          padding: 24,
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ fontFamily: ff.display, fontSize: '1.3rem', fontWeight: 700 }}>Couldn't load the site</div>
+        <p style={{ color: TEXT_DIM, maxWidth: 420, fontSize: '0.9rem' }}>{loadError}</p>
+        <button
+          onClick={loadData}
+          className="btn-primary"
+          style={{
+            backgroundColor: PRIMARY_ACCENT,
+            color: BG,
+            padding: '10px 24px',
+            borderRadius: 4,
+            fontFamily: ff.mono,
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div
+        data-theme={darkMode ? 'dark' : 'light'}
+        style={{
+          backgroundColor: BG,
+          color: TEXT,
+          fontFamily: ff.body,
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            border: `2px solid ${BORDER}`,
+            borderTopColor: PRIMARY_ACCENT,
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+      </div>
+    )
+  }
+
+  const { profile, skills, projects, experience, process } = data
 
   return (
     <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: BG, color: TEXT, fontFamily: ff.body, minHeight: '100vh', transition: 'background-color 0.4s ease, color 0.4s ease' }}>
@@ -389,19 +445,44 @@ export default function App() {
               style={{
                 background: 'none',
                 border: `1px solid ${BORDER}`,
-                borderRadius: 6,
+                borderRadius: '50%',
                 cursor: 'pointer',
-                padding: '6px 10px',
-                fontSize: '1rem',
-                lineHeight: 1,
-                transition: 'border-color 0.3s, transform 0.2s',
+                padding: 0,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                transition: 'border-color 0.3s, transform 0.2s, background-color 0.2s',
                 color: TEXT,
                 animation: `fadeInDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both`,
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = PRIMARY_ACCENT; e.currentTarget.style.transform = 'scale(1.1)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.transform = 'scale(1)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = PRIMARY_ACCENT
+                e.currentTarget.style.transform = 'scale(1.12)'
+                e.currentTarget.style.backgroundColor = ACCENT_SUBTLE_BG
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = BORDER
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
             >
-              {darkMode ? '☀️' : '🌙'}
+              {darkMode ? (
+                /* Sun — switch to light */
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ) : (
+                /* Moon — switch to dark */
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
             </button>
             <button
               onClick={() => scrollTo('Contact')}
@@ -480,7 +561,9 @@ export default function App() {
             <button
               onClick={() => setDarkMode(!darkMode)}
               style={{
-                display: 'block',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
                 width: '100%',
                 textAlign: 'left',
                 background: 'none',
@@ -494,7 +577,24 @@ export default function App() {
                 marginTop: 4,
               }}
             >
-              {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+              {darkMode ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                  Light Mode
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                  Dark Mode
+                </>
+              )}
             </button>
           </div>
         )}
@@ -557,7 +657,7 @@ export default function App() {
             lineHeight: 1,
           }}
         >
-          Mushimiyimana
+          {profile.surname}
         </div>
         <div style={{ maxWidth: 1120, margin: '0 auto', width: '100%', position: 'relative' }}>
           <div
@@ -574,7 +674,7 @@ export default function App() {
             }}
           >
             <span className="section-line" style={{ height: 1, backgroundColor: PRIMARY_ACCENT, display: 'inline-block', flexShrink: 0 }} />
-            FULL STACK DEVELOPER · 2 YEARS EXPERIENCE
+            {profile.tagline.toUpperCase()}
           </div>
           <h1
             style={{
@@ -585,8 +685,8 @@ export default function App() {
               marginBottom: '1.75rem',
             }}
           >
-            <span className="hero-name-first" style={{ fontSize: 'clamp(3.5rem, 9vw, 7.5rem)', color: TEXT, display: 'block' }}>Henriette</span>
-            <span className="hero-name-last" style={{ fontSize: 'clamp(2rem, 5.5vw, 4.8rem)', color: ACCENT_DIM, display: 'block' }}>Mushimiyimana</span>
+            <span className="hero-name-first" style={{ fontSize: 'clamp(3.5rem, 9vw, 7.5rem)', color: TEXT, display: 'block' }}>{profile.name}</span>
+            <span className="hero-name-last" style={{ fontSize: 'clamp(2rem, 5.5vw, 4.8rem)', color: ACCENT_DIM, display: 'block' }}>{profile.surname}</span>
           </h1>
           <p
             className="hero-description"
@@ -598,7 +698,7 @@ export default function App() {
               marginBottom: '2.5rem',
             }}
           >
-            I build fast, reliable full-stack applications — from responsive user interfaces to scalable backend systems, APIs, databases, and cloud-based solutions.
+            {profile.bio_short}
           </p>
           <div className="hero-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
             <button
@@ -717,20 +817,16 @@ export default function App() {
                 Building things that{' '}
                 <span style={{ color: PRIMARY_ACCENT }}>actually work.</span>
               </h2>
-              <p style={{ color: TEXT_DIM, lineHeight: 1.8, marginBottom: '1rem', fontSize: '0.95rem' }}>
-                I'm a full-stack developer and student passionate about building software that solves real-world problems. My journey into programming began in high school, where curiosity gradually turned into a deep interest in software development.
-              </p>
-              <p style={{ color: TEXT_DIM, lineHeight: 1.8, marginBottom: '1rem', fontSize: '0.95rem' }}>
-                Over the years, I've worked on projects ranging from modern web applications to microservices and backend systems. I enjoy designing APIs, working with databases, integrating services, and learning new technologies.
-              </p>
-              <p style={{ color: TEXT_DIM, lineHeight: 1.8, marginBottom: '2rem', fontSize: '0.95rem' }}>
-                I care deeply about writing clean, maintainable code, building systems that scale, and continuously improving my skills as a developer. Every project I build is another opportunity to learn, experiment, and grow.
-              </p>
+              {profile.bio_paragraphs.map((para, i) => (
+                <p key={i} style={{ color: TEXT_DIM, lineHeight: 1.8, marginBottom: i === profile.bio_paragraphs.length - 1 ? '2rem' : '1rem', fontSize: '0.95rem' }}>
+                  {para}
+                </p>
+              ))}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {[
-                  { label: 'Location', value: 'San Francisco, CA' },
-                  { label: 'Education', value: 'B.Sc. CS · UC Davis' },
-                  { label: 'Status', value: 'Open to offers' },
+                  { label: 'Location', value: profile.location },
+                  { label: 'Education', value: profile.education },
+                  { label: 'Status', value: profile.status },
                 ].map((item, i) => (
                   <div
                     key={item.label}
@@ -772,55 +868,132 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Skills ── */}
-      <section id="skills" style={{ padding: '100px 24px', backgroundColor: BG }}>
-        <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+      {/* ── Skills — infinite horizontal marquee ── */}
+      <section id="skills" style={{ padding: '100px 0', backgroundColor: BG, overflow: 'hidden' }}>
+        {/* Heading stays in the max-width container */}
+        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 24px', marginBottom: 56 }}>
           <div ref={skillsReveal.ref}>
             <SectionLabel visible={skillsReveal.visible}>Skills</SectionLabel>
           </div>
-          <div className="grid md:grid-cols-2" style={{ gap: 64, marginTop: 48, alignItems: 'start' }}>
-            <div className={`reveal-left ${skillsReveal.visible ? 'visible' : ''}`}>
-              <h2
+          <div
+            className={`reveal-left ${skillsReveal.visible ? 'visible' : ''}`}
+            style={{
+              marginTop: 48,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 32,
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <h2
+              style={{
+                fontFamily: ff.display,
+                fontSize: 'clamp(1.8rem, 3vw, 2.6rem)',
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                lineHeight: 1.1,
+              }}
+            >
+              Tools I reach<br />for every day.
+            </h2>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                padding: '18px 24px',
+                borderRadius: 10,
+                border: `1px solid ${BORDER_BRIGHT}`,
+                background: `linear-gradient(135deg, ${ACCENT_SUBTLE_BG}, transparent)`,
+                maxWidth: 400,
+              }}
+            >
+              <div
                 style={{
-                  fontFamily: ff.display,
-                  fontSize: 'clamp(1.8rem, 3vw, 2.6rem)',
-                  fontWeight: 800,
-                  letterSpacing: '-0.03em',
-                  lineHeight: 1.1,
-                  marginBottom: '1rem',
+                  width: 42,
+                  height: 42,
+                  borderRadius: '50%',
+                  backgroundColor: ACCENT_SUBTLE_BG,
+                  border: `1px solid ${PRIMARY_ACCENT}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  color: PRIMARY_ACCENT,
                 }}
               >
-                Tools I reach<br />for every day.
-              </h2>
-              <p style={{ color: TEXT_DIM, lineHeight: 1.75, fontSize: '0.95rem', maxWidth: 380 }}>
-                A growing skill set built through continuous practice across frontend and backend development, with a strong focus on clean code, scalable systems, and modern web technologies.
-              </p>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontFamily: ff.mono, fontSize: '0.68rem', color: PRIMARY_ACCENT, letterSpacing: '0.1em', marginBottom: 4 }}>
+                  {skills.length}+ TECHNOLOGIES
+                </div>
+                <p style={{ color: TEXT_DIM, lineHeight: 1.6, fontSize: '0.85rem', margin: 0 }}>
+                  A growing skill set sharpened through continuous, hands-on practice.
+                </p>
+              </div>
             </div>
-            <div className={`reveal-right ${skillsReveal.visible ? 'visible' : ''}`}>
-              {['Frontend', 'Language', 'Backend', 'Database', 'DevOps', 'API', 'ML'].map((cat, catIndex) => {
-                const catSkills = SKILLS.filter((s) => s.cat === cat)
-                if (!catSkills.length) return null
-                return (
-                  <div key={cat} style={{ marginBottom: 20, opacity: skillsReveal.visible ? 1 : 0, transform: skillsReveal.visible ? 'translateY(0)' : 'translateY(15px)', transition: `all 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.2 + catIndex * 0.1}s` }}>
-                    <div
-                      style={{
-                        fontFamily: ff.mono,
-                        fontSize: '0.65rem',
-                        color: 'rgba(59,130,246,0.65)',
-                        letterSpacing: '0.14em',
-                        marginBottom: 8,
-                      }}
-                    >
-                      {cat.toUpperCase()}
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {catSkills.map((skill, si) => (
-                        <SkillTag key={skill.name} name={skill.name} delay={0.3 + catIndex * 0.1 + si * 0.05} visible={skillsReveal.visible} />
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
+          </div>
+        </div>
+
+        {/* Full-viewport-width marquee rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Row 1 — scrolls left */}
+          <div className="marquee-outer">
+            <div className="marquee-track">
+              {[...skills, ...skills].map((skill, i) => (
+                <span
+                  key={i}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 4,
+                    backgroundColor: SURFACE,
+                    border: `1px solid ${BORDER}`,
+                    fontFamily: ff.mono,
+                    fontSize: '0.82rem',
+                    color: TEXT,
+                    whiteSpace: 'nowrap',
+                    flex: '0 0 auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                  }}
+                >
+                  <span style={{ fontSize: '0.55rem', color: PRIMARY_ACCENT, opacity: 0.8 }}>▸</span>
+                  {skill.name}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 2 — scrolls right */}
+          <div className="marquee-outer">
+            <div className="marquee-track-reverse">
+              {[...[...skills].reverse(), ...[...skills].reverse()].map((skill, i) => (
+                <span
+                  key={i}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 4,
+                    backgroundColor: SURFACE,
+                    border: `1px solid ${BORDER}`,
+                    fontFamily: ff.mono,
+                    fontSize: '0.82rem',
+                    color: TEXT,
+                    whiteSpace: 'nowrap',
+                    flex: '0 0 auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                  }}
+                >
+                  <span style={{ fontSize: '0.55rem', color: PRIMARY_ACCENT, opacity: 0.8 }}>▸</span>
+                  {skill.name}
+                </span>
+              ))}
             </div>
           </div>
         </div>
@@ -837,19 +1010,20 @@ export default function App() {
             <p>A simple, collaborative process keeps the work focused and the outcome easy to use.</p>
           </div>
           <div className="process-grid">
-            {PROCESS.map((item, index) => (
+            {process.map((item, index) => (
               <article
                 className="process-card"
-                key={item.number}
+                key={item.id}
                 style={{
                   opacity: processReveal.visible ? 1 : 0,
                   transform: processReveal.visible ? 'translateY(0)' : 'translateY(24px)',
                   transitionDelay: `${index * 0.1}s`,
                 }}
               >
-                <div className="process-number">{item.number}</div>
+                <div className="process-icon">{PROCESS_ICONS[index % PROCESS_ICONS.length]}</div>
                 <h3>{item.title}</h3>
                 <p>{item.text}</p>
+                <span className="process-card-watermark" aria-hidden="true">{item.number}</span>
               </article>
             ))}
           </div>
@@ -886,7 +1060,9 @@ export default function App() {
               Selected work.
             </h2>
             <a
-              href="#"
+              href={profile.github_url ? `https://${profile.github_url.replace(/^https?:\/\//, '')}` : '#'}
+              target="_blank"
+              rel="noreferrer"
               style={{
                 fontFamily: ff.mono,
                 fontSize: '0.78rem',
@@ -905,8 +1081,8 @@ export default function App() {
             </a>
           </div>
           <div className="grid md:grid-cols-3" style={{ gap: 20 }}>
-            {PROJECTS.map((p, i) => (
-              <ProjectCard key={p.title} project={p} delay={i * 0.15} visible={projectsReveal.visible} />
+            {projects.map((p, i) => (
+              <ProjectCard key={p.id} project={p} delay={i * 0.15} visible={projectsReveal.visible} />
             ))}
           </div>
         </div>
@@ -933,8 +1109,36 @@ export default function App() {
             Where I've worked.
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {EXPERIENCE.map((exp, i) => (
-              <ExperienceCard key={exp.company} exp={exp} defaultOpen={i === 0} delay={i * 0.15} visible={experienceReveal.visible} />
+            {experience.map((exp, i) => (
+              <ExperienceCard key={exp.id} exp={exp} defaultOpen={i === 0} delay={i * 0.15} visible={experienceReveal.visible} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ── */}
+      <section id="testimonials" style={{ padding: '100px 24px', backgroundColor: SURFACE2 }}>
+        <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+          <div ref={testimonialsReveal.ref}>
+            <SectionLabel visible={testimonialsReveal.visible}>Testimonials</SectionLabel>
+          </div>
+          <h2
+            className={`reveal ${testimonialsReveal.visible ? 'visible' : ''}`}
+            style={{
+              fontFamily: ff.display,
+              fontSize: 'clamp(1.8rem, 3vw, 2.6rem)',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1,
+              marginTop: 8,
+              marginBottom: 40,
+            }}
+          >
+            Kind words from people I've worked with.
+          </h2>
+          <div className="grid md:grid-cols-2" style={{ gap: 20 }}>
+            {TESTIMONIALS.map((t, i) => (
+              <TestimonialCard key={t.name} testimonial={t} delay={i * 0.12} visible={testimonialsReveal.visible} />
             ))}
           </div>
         </div>
@@ -967,9 +1171,10 @@ export default function App() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { label: 'Email', value: 'henriettemayor@gmail.com' },
-                  { label: 'GitHub', value: 'github.com/Mushi001' },
-                  { label: 'LinkedIn', value: 'linkedin.com/in/mushimiyimana-henriette' },
+                  { label: 'Email', value: profile.email },
+                  { label: 'Phone', value: '+250 796 029 263' },
+                  { label: 'GitHub', value: profile.github_url },
+                  { label: 'LinkedIn', value: profile.linkedin_url },
                   { label: 'Instagram', value: 'instagram.com/h.e.n.r_i.e.t.t.e' },
                 ].map((link, i) => (
                   <ContactLink key={link.label} label={link.label} value={link.value} delay={i * 0.1} visible={contactReveal.visible} />
@@ -1043,7 +1248,7 @@ export default function App() {
                           width: '100%',
                           padding: '12px 16px',
                           borderRadius: 4,
-                          border: `1px solid ${BORDER}`,
+                          border: `1px solid ${fieldErrors[field.id] ? ERROR_COLOR : BORDER}`,
                           backgroundColor: SURFACE,
                           color: TEXT,
                           fontSize: '0.9rem',
@@ -1053,8 +1258,11 @@ export default function App() {
                           fontFamily: ff.body,
                         }}
                         onFocus={(e) => (e.target.style.borderColor = INPUT_FOCUS_BORDER)}
-                        onBlur={(e) => (e.target.style.borderColor = BORDER)}
+                        onBlur={(e) => (e.target.style.borderColor = fieldErrors[field.id] ? ERROR_COLOR : BORDER)}
                       />
+                      {fieldErrors[field.id] && (
+                        <div style={{ color: ERROR_COLOR, fontSize: '0.75rem', marginTop: 6 }}>{fieldErrors[field.id]}</div>
+                      )}
                     </div>
                   ))}
                   <div>
@@ -1069,7 +1277,7 @@ export default function App() {
                         width: '100%',
                         padding: '12px 16px',
                         borderRadius: 4,
-                        border: `1px solid ${BORDER}`,
+                        border: `1px solid ${fieldErrors.message ? ERROR_COLOR : BORDER}`,
                         backgroundColor: SURFACE,
                         color: TEXT,
                         fontSize: '0.9rem',
@@ -1080,11 +1288,29 @@ export default function App() {
                         boxSizing: 'border-box',
                       }}
                       onFocus={(e) => (e.target.style.borderColor = INPUT_FOCUS_BORDER)}
-                      onBlur={(e) => (e.target.style.borderColor = BORDER)}
+                      onBlur={(e) => (e.target.style.borderColor = fieldErrors.message ? ERROR_COLOR : BORDER)}
                     />
+                    {fieldErrors.message && (
+                      <div style={{ color: ERROR_COLOR, fontSize: '0.75rem', marginTop: 6 }}>{fieldErrors.message}</div>
+                    )}
                   </div>
+                  {formError && (
+                    <div
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 4,
+                        border: `1px solid ${ERROR_COLOR}`,
+                        backgroundColor: 'rgba(239,68,68,0.08)',
+                        color: ERROR_COLOR,
+                        fontSize: '0.82rem',
+                      }}
+                    >
+                      {formError}
+                    </div>
+                  )}
                   <button
                     type="submit"
+                    disabled={submitting}
                     className="btn-primary"
                     style={{
                       backgroundColor: PRIMARY_ACCENT,
@@ -1095,14 +1321,15 @@ export default function App() {
                       fontSize: '0.82rem',
                       fontWeight: 700,
                       border: 'none',
-                      cursor: 'pointer',
+                      cursor: submitting ? 'default' : 'pointer',
                       letterSpacing: '0.05em',
                       alignSelf: 'flex-start',
+                      opacity: submitting ? 0.7 : 1,
                     }}
-                    onMouseEnter={(e) => ((e.target as HTMLElement).style.backgroundColor = ACCENT_HOVER)}
-                    onMouseLeave={(e) => ((e.target as HTMLElement).style.backgroundColor = PRIMARY_ACCENT)}
+                    onMouseEnter={(e) => !submitting && ((e.target as HTMLElement).style.backgroundColor = ACCENT_HOVER)}
+                    onMouseLeave={(e) => !submitting && ((e.target as HTMLElement).style.backgroundColor = PRIMARY_ACCENT)}
                   >
-                    Send message →
+                    {submitting ? 'Sending…' : 'Send message →'}
                   </button>
                 </form>
               )}
@@ -1131,7 +1358,7 @@ export default function App() {
           }}
         >
           <div style={{ fontFamily: ff.mono, fontSize: '0.7rem', color: TEXT_FAINT, letterSpacing: '0.05em' }}>
-            © 2025 Henriette Mushimiyimana · Built with React + TypeScript
+            © {new Date().getFullYear()} {profile.name} {profile.surname} · Built with React + TypeScript
           </div>
           <div
             style={{
@@ -1154,7 +1381,7 @@ export default function App() {
                 display: 'inline-block',
               }}
             />
-            OPEN TO WORK
+            {profile.status.toUpperCase()}
           </div>
         </div>
       </footer>
@@ -1213,34 +1440,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-function SkillTag({ name, delay = 0, visible = true }: { name: string; delay?: number; visible?: boolean }) {
-  const [hov, setHov] = useState(false)
-  return (
-    <span
-      className="skill-tag"
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        padding: '5px 12px',
-        borderRadius: 3,
-        backgroundColor: hov ? ACCENT_SUBTLE_BG : SURFACE,
-        border: `1px solid ${hov ? BORDER_BRIGHT : BORDER}`,
-        fontFamily: ff.mono,
-        fontSize: '0.78rem',
-        color: hov ? PRIMARY_ACCENT : TEXT,
-        cursor: 'default',
-        display: 'inline-block',
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.95)',
-        transition: `opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, background-color 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s`,
-      }}
-    >
-      {name}
-    </span>
-  )
-}
-
-function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof PROJECTS)[0]; delay?: number; visible?: boolean }) {
+function ProjectCard({ project, delay = 0, visible = true }: { project: Project; delay?: number; visible?: boolean }) {
   const [hov, setHov] = useState(false)
   return (
     <div
@@ -1255,15 +1455,19 @@ function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof 
         transform: hov ? 'translateY(-8px)' : 'translateY(0)',
         display: 'flex',
         flexDirection: 'column',
-        cursor: 'pointer',
+        cursor: project.live_url || project.github_url ? 'pointer' : 'default',
         opacity: visible ? 1 : 0,
         animation: visible ? `slideInStagger 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s both` : 'none',
+      }}
+      onClick={() => {
+        const url = project.live_url || project.github_url
+        if (url) window.open(url, '_blank', 'noreferrer')
       }}
     >
       <div style={{ aspectRatio: '16/9', overflow: 'hidden', backgroundColor: IMG_PLACEHOLDER, position: 'relative' }}>
         <img
           className="project-image"
-          src={`https://images.unsplash.com/photo-${project.imgId}?w=600&h=340&fit=crop&auto=format`}
+          src={project.image_url}
           alt={project.title}
           style={{
             width: '100%',
@@ -1375,7 +1579,7 @@ function ProjectCard({ project, delay = 0, visible = true }: { project: (typeof 
   )
 }
 
-function ExperienceCard({ exp, defaultOpen, delay = 0, visible = true }: { exp: (typeof EXPERIENCE)[0]; defaultOpen: boolean; delay?: number; visible?: boolean }) {
+function ExperienceCard({ exp, defaultOpen, delay = 0, visible = true }: { exp: Experience; defaultOpen: boolean; delay?: number; visible?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div
@@ -1537,6 +1741,116 @@ function ContactLink({ label, value, delay = 0, visible = true }: { label: strin
         {label.toUpperCase()}
       </div>
       <div style={{ fontSize: '0.9rem', color: TEXT }}>{value}</div>
+    </div>
+  )
+}
+
+const TESTIMONIALS = [
+  {
+    name: 'Alex Carter',
+    role: 'CTO',
+    company: 'Buildware Technologies',
+    avatar: 'AC',
+    text: "Henriette delivered the microservices architecture ahead of schedule with zero critical bugs. Her attention to detail and proactive communication made her one of the best junior developers I've worked with.",
+    rating: 5,
+  },
+  {
+    name: 'Sarah Kim',
+    role: 'Lead Engineer',
+    company: 'Novalign Studio',
+    avatar: 'SK',
+    text: 'Working with Henriette on our fintech dashboard was a great experience. She has a solid grasp of React patterns and writes clean, maintainable code. She improved our Lighthouse score significantly on her own initiative.',
+    rating: 5,
+  },
+  {
+    name: 'Marcus Johnson',
+    role: 'Product Manager',
+    company: 'Buildware Technologies',
+    avatar: 'MJ',
+    text: 'Henriette consistently shipped features on time and communicated blockers early. Her automated reporting feature saved our clients hours every week — a real impact player on the team.',
+    rating: 5,
+  },
+  {
+    name: 'Priya Nair',
+    role: 'Senior Developer',
+    company: 'Freelance Collaborator',
+    avatar: 'PN',
+    text: 'I collaborated with Henriette on a side project and was blown away by her API design skills. She built a clean, well-documented REST API that was a pleasure to integrate with. Would absolutely work together again.',
+    rating: 5,
+  },
+]
+
+function TestimonialCard({
+  testimonial,
+  delay = 0,
+  visible = true,
+}: {
+  testimonial: (typeof TESTIMONIALS)[0]
+  delay?: number
+  visible?: boolean
+}) {
+  const [hov, setHov] = useState(false)
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        padding: '1.75rem',
+        borderRadius: 10,
+        border: `1px solid ${hov ? BORDER_BRIGHT : BORDER}`,
+        backgroundColor: SURFACE,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(24px)',
+        transition: `opacity 0.6s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.6s cubic-bezier(0.16,1,0.3,1) ${delay}s, border-color 0.3s`,
+        cursor: 'default',
+      }}
+    >
+      {/* Stars */}
+      <div style={{ display: 'flex', gap: 4 }}>
+        {Array.from({ length: testimonial.rating }).map((_, i) => (
+          <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill={PRIMARY_ACCENT}>
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+        ))}
+      </div>
+      {/* Quote */}
+      <p style={{ fontSize: '0.92rem', color: TEXT_DIM, lineHeight: 1.75, fontStyle: 'italic', flex: 1 }}>
+        "{testimonial.text}"
+      </p>
+      {/* Author */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            backgroundColor: ACCENT_SUBTLE_BG,
+            border: `1px solid ${BORDER_BRIGHT}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: ff.mono,
+            fontSize: '0.68rem',
+            color: PRIMARY_ACCENT,
+            fontWeight: 700,
+            flexShrink: 0,
+            letterSpacing: '0.04em',
+          }}
+        >
+          {testimonial.avatar}
+        </div>
+        <div>
+          <div style={{ fontFamily: ff.display, fontWeight: 700, fontSize: '0.92rem', color: TEXT }}>
+            {testimonial.name}
+          </div>
+          <div style={{ fontFamily: ff.mono, fontSize: '0.68rem', color: TEXT_FAINT, marginTop: 2 }}>
+            {testimonial.role} · {testimonial.company}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

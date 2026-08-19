@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './admin.css'
-
-// ── Constants ──
-const ADMIN_PASSWORD = 'admin123'
-const STORAGE_KEY = 'portfolio_messages'
-const SESSION_KEY = 'admin_authenticated'
+import {
+  ApiError,
+  adminDeleteMessage,
+  adminListMessages,
+  adminLogin,
+  adminSetMessageRead,
+  clearToken,
+  getToken,
+  type AdminContactMessage,
+} from './lib/api'
 
 const PRIMARY = '#3B82F6'
-const BG = '#0D1117'
-const SURFACE = '#161B22'
 const TEXT = '#FFFFFF'
-const TEXT_DIM = '#9CA3AF'
-const BORDER = 'rgba(255,255,255,0.1)'
 
 const ff = {
   display: "'DM Sans', sans-serif",
@@ -19,121 +20,127 @@ const ff = {
   mono: "'DM Sans', sans-serif",
 }
 
-export interface ContactMessage {
-  id: string
-  name: string
-  email: string
-  message: string
-  timestamp: string
-  read: boolean
-}
-
-export function getMessages(): ContactMessage[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-export function saveMessages(messages: ContactMessage[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
-}
-
 // ── Admin Portal Component ──
 export default function AdminPortal() {
-  const [authenticated, setAuthenticated] = useState(false)
+  const [authenticated, setAuthenticated] = useState(() => getToken() !== null)
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [messages, setMessages] = useState<ContactMessage[]>([])
+  const [loginError, setLoginError] = useState('')
+  const [messages, setMessages] = useState<AdminContactMessage[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [listError, setListError] = useState('')
 
-  // Check session on mount
-  useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY) === 'true') {
-      setAuthenticated(true)
-    }
+  const handleSessionExpired = useCallback(() => {
+    clearToken()
+    setAuthenticated(false)
+    setMessages([])
   }, [])
+
+  const refreshMessages = useCallback(async () => {
+    try {
+      const list = await adminListMessages()
+      setMessages(list)
+      setListError('')
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        handleSessionExpired()
+      } else {
+        setListError(err instanceof ApiError ? err.message : 'Could not load messages.')
+      }
+    }
+  }, [handleSessionExpired])
 
   // Load messages when authenticated
   useEffect(() => {
-    if (authenticated) {
-      setMessages(getMessages())
-    }
-  }, [authenticated])
+    if (authenticated) refreshMessages()
+  }, [authenticated, refreshMessages])
 
   // Refresh messages periodically
   useEffect(() => {
     if (!authenticated) return
-    const interval = setInterval(() => {
-      setMessages(getMessages())
-    }, 3000)
+    const interval = setInterval(refreshMessages, 5000)
     return () => clearInterval(interval)
-  }, [authenticated])
+  }, [authenticated, refreshMessages])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
-
-    // Small delay for UX feel
-    await new Promise(r => setTimeout(r, 400))
-
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, 'true')
+    setLoginError('')
+    try {
+      await adminLogin(username, password)
       setAuthenticated(true)
-    } else {
-      setError('Incorrect password. Please try again.')
+    } catch (err) {
+      setLoginError(err instanceof ApiError ? err.message : 'Could not reach the server. Please try again.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleLogout = () => {
-    sessionStorage.removeItem(SESSION_KEY)
+    clearToken()
     setAuthenticated(false)
     setPassword('')
   }
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id)
+  const toggleExpand = async (id: string) => {
+    const nowExpanded = expandedId === id ? null : id
+    setExpandedId(nowExpanded)
     setDeleteConfirmId(null)
-    // Mark as read
-    const updated = messages.map(m =>
-      m.id === id ? { ...m, read: true } : m
-    )
-    setMessages(updated)
-    saveMessages(updated)
+
+    const msg = messages.find((m) => m.id === id)
+    if (nowExpanded && msg && !msg.is_read) {
+      try {
+        const updated = await adminSetMessageRead(id, true)
+        setMessages((prev) => prev.map((m) => (m.id === id ? updated : m)))
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) handleSessionExpired()
+      }
+    }
   }
 
-  const handleDelete = (id: string) => {
-    const updated = messages.filter(m => m.id !== id)
-    setMessages(updated)
-    saveMessages(updated)
-    setDeleteConfirmId(null)
-    setExpandedId(null)
+  const handleDelete = async (id: string) => {
+    try {
+      await adminDeleteMessage(id)
+      setMessages((prev) => prev.filter((m) => m.id !== id))
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) handleSessionExpired()
+    } finally {
+      setDeleteConfirmId(null)
+      setExpandedId(null)
+    }
   }
 
-  const markAllRead = () => {
-    const updated = messages.map(m => ({ ...m, read: true }))
-    setMessages(updated)
-    saveMessages(updated)
+  const markAllRead = async () => {
+    const unread = messages.filter((m) => !m.is_read)
+    try {
+      const updates = await Promise.all(unread.map((m) => adminSetMessageRead(m.id, true)))
+      const byId = new Map(updates.map((m) => [m.id, m]))
+      setMessages((prev) => prev.map((m) => byId.get(m.id) ?? m))
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) handleSessionExpired()
+    }
   }
 
-  const clearAll = () => {
-    setMessages([])
-    saveMessages([])
-    setExpandedId(null)
-    setDeleteConfirmId(null)
+  const clearAll = async () => {
+    if (!window.confirm(`Permanently delete all ${messages.length} message(s)? This cannot be undone.`)) return
+    try {
+      await Promise.all(messages.map((m) => adminDeleteMessage(m.id)))
+      setMessages([])
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) handleSessionExpired()
+    } finally {
+      setExpandedId(null)
+      setDeleteConfirmId(null)
+    }
   }
 
   // ── Stats ──
   const totalMessages = messages.length
-  const unreadCount = messages.filter(m => !m.read).length
-  const todayCount = messages.filter(m => {
-    const msgDate = new Date(m.timestamp).toDateString()
+  const unreadCount = messages.filter((m) => !m.is_read).length
+  const todayCount = messages.filter((m) => {
+    const msgDate = new Date(m.created_at).toDateString()
     return msgDate === new Date().toDateString()
   }).length
 
@@ -148,25 +155,38 @@ export default function AdminPortal() {
                 <span style={{ color: PRIMARY }}>HM</span>
                 <span style={{ color: TEXT }}>.admin</span>
               </div>
-              <p className="admin-login-subtitle">Enter your password to access the dashboard</p>
+              <p className="admin-login-subtitle">Sign in with your admin credentials</p>
             </div>
             <form onSubmit={handleLogin} className="admin-login-form">
+              <div className="admin-field">
+                <label className="admin-field-label">USERNAME</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter admin username"
+                  className="admin-input"
+                  autoFocus
+                  autoComplete="username"
+                  required
+                />
+              </div>
               <div className="admin-field">
                 <label className="admin-field-label">PASSWORD</label>
                 <input
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter admin password"
                   className="admin-input"
-                  autoFocus
+                  autoComplete="current-password"
                   required
                 />
               </div>
-              {error && (
+              {loginError && (
                 <div className="admin-error">
                   <span className="admin-error-icon">!</span>
-                  {error}
+                  {loginError}
                 </div>
               )}
               <button
@@ -220,6 +240,13 @@ export default function AdminPortal() {
 
       {/* Main Content */}
       <main className="admin-main">
+        {listError && (
+          <div className="admin-error" style={{ marginBottom: 20 }}>
+            <span className="admin-error-icon">!</span>
+            {listError}
+          </div>
+        )}
+
         {/* Stats Row */}
         <div className="admin-stats-grid">
           <div className="admin-stat-card">
@@ -261,7 +288,12 @@ export default function AdminPortal() {
         {/* Messages List */}
         {messages.length === 0 ? (
           <div className="admin-empty">
-            <div className="admin-empty-icon">📭</div>
+            <div className="admin-empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            </div>
             <h3>No messages yet</h3>
             <p>When visitors submit the contact form, their messages will appear here.</p>
           </div>
@@ -270,7 +302,7 @@ export default function AdminPortal() {
             {[...messages].reverse().map(msg => (
               <div
                 key={msg.id}
-                className={`admin-message-card ${expandedId === msg.id ? 'expanded' : ''} ${!msg.read ? 'unread' : ''}`}
+                className={`admin-message-card ${expandedId === msg.id ? 'expanded' : ''} ${!msg.is_read ? 'unread' : ''}`}
               >
                 {/* Message Header (always visible) */}
                 <button
@@ -278,7 +310,7 @@ export default function AdminPortal() {
                   onClick={() => toggleExpand(msg.id)}
                 >
                   <div className="admin-message-left">
-                    {!msg.read && <span className="admin-unread-dot" />}
+                    {!msg.is_read && <span className="admin-unread-dot" />}
                     <div>
                       <div className="admin-message-name">{msg.name}</div>
                       <div className="admin-message-email">{msg.email}</div>
@@ -293,7 +325,7 @@ export default function AdminPortal() {
                       )}
                     </span>
                     <span className="admin-message-date">
-                      {formatDate(msg.timestamp)}
+                      {formatDate(msg.created_at)}
                     </span>
                     <span className={`admin-expand-icon ${expandedId === msg.id ? 'rotated' : ''}`}>
                       +
@@ -307,7 +339,7 @@ export default function AdminPortal() {
                     <div className="admin-message-meta">
                       <span>From: <strong>{msg.name}</strong></span>
                       <span>Email: <strong>{msg.email}</strong></span>
-                      <span>Received: <strong>{new Date(msg.timestamp).toLocaleString()}</strong></span>
+                      <span>Received: <strong>{new Date(msg.created_at).toLocaleString()}</strong></span>
                     </div>
                     <div className="admin-message-content">
                       {msg.message}
