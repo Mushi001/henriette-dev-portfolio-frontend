@@ -36,6 +36,7 @@
   --hero-grid: rgba(59,130,246,0.04);
   --hero-stroke: rgba(59,130,246,0.08);
   --hero-glow: rgba(59,130,246,0.1);
+  --page-watermark-stroke: rgba(96,165,250,0.22);
   --accent-subtle-bg: rgba(59,130,246,0.07);
   --accent-subtle-bg2: rgba(59,130,246,0.1);
   --input-focus-border: rgba(59,130,246,0.5);
@@ -71,6 +72,7 @@
   --hero-grid: rgba(59,130,246,0.05);
   --hero-stroke: rgba(59,130,246,0.1);
   --hero-glow: rgba(59,130,246,0.08);
+  --page-watermark-stroke: rgba(37,99,235,0.16);
   --accent-subtle-bg: rgba(59,130,246,0.06);
   --accent-subtle-bg2: rgba(59,130,246,0.08);
   --input-focus-border: rgba(59,130,246,0.5);
@@ -512,8 +514,29 @@ section { scroll-margin-top: 64px; }
   animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.0s both;
 }
 
-.hero-watermark {
-  animation: fadeIn 1.5s ease 1.2s both, floatWatermark 6s ease-in-out 2.5s infinite;
+/* ── Full-page diagonal signature watermark ── */
+.page-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+  animation: fadeIn 1.8s ease 0.6s both;
+}
+.page-watermark span {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 800;
+  font-size: clamp(9rem, 24vw, 26rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--page-watermark-stroke);
+  transform: rotate(32deg);
+  user-select: none;
 }
 
 .hero-glow {
@@ -630,11 +653,6 @@ section { scroll-margin-top: 64px; }
 /* ── Form input focus animation ── */
 input:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
-}
-
-/* ── Smooth scroll-linked parallax for watermark ── */
-.watermark-text {
-  will-change: transform;
 }
 
 /* ── Stagger delay utility ── */

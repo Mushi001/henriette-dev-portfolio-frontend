@@ -380,6 +380,10 @@ export default function App() {
         }}
       />
       <div className="scroll-progress" style={{ transform: `scaleX(${scrollProgress / 100})` }} aria-hidden="true" />
+      {/* Full-page diagonal signature watermark */}
+      <div className="page-watermark" aria-hidden="true">
+        <span>{profile.surname}</span>
+      </div>
       {/* ── Nav ── */}
       <nav
         className="nav-animated"
@@ -637,28 +641,6 @@ export default function App() {
             pointerEvents: 'none',
           }}
         />
-        {/* Background watermark text */}
-        <div
-          className="hero-watermark watermark-text"
-          style={{
-            position: 'absolute',
-            bottom: '-2%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontFamily: ff.display,
-            fontWeight: 800,
-            fontSize: 'clamp(4rem, 14vw, 13rem)',
-            letterSpacing: '-0.04em',
-            color: 'transparent',
-            WebkitTextStroke: `1px var(--hero-stroke)`,
-            whiteSpace: 'nowrap',
-            userSelect: 'none',
-            pointerEvents: 'none',
-            lineHeight: 1,
-          }}
-        >
-          {profile.surname}
-        </div>
         <div style={{ maxWidth: 1120, margin: '0 auto', width: '100%', position: 'relative' }}>
           <div
             className="hero-badge"
